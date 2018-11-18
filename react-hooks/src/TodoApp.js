@@ -1,20 +1,33 @@
-import React, { useReducer, useState, useContext } from "react";
+import React, { useReducer, useState, useContext, useEffect } from "react";
 import Context from "./Context";
 
 const appReducer = (state, action) => {
   if (action.type === "ADD") {
-    console.log("hey");
     let newState = { ...state };
     newState.todos = newState.todos.concat(action.payload);
     return newState;
   } else if (action.type === "DELETE") {
-    return [];
+    let newState = state.todos.filter(todo => todo.id !== action.payload.id);
+    return { todos: newState };
+  } else if (action.type === "reset") {
+    return action.payload;
   }
 };
 
 function TodoApp() {
   const [store, dispatch] = useReducer(appReducer, { todos: [] });
   const [input, setInput] = useState("");
+
+  useEffect(() => {
+    const raw = localStorage.getItem("data");
+    dispatch({ type: "reset", payload: { todos: JSON.parse(raw) } });
+  }, []);
+  useEffect(
+    () => {
+      localStorage.setItem("data", JSON.stringify(store.todos));
+    },
+    [store]
+  );
   return (
     <Context.Provider value={dispatch}>
       <input
@@ -26,7 +39,11 @@ function TodoApp() {
       />
       <button
         onClick={() => {
-          dispatch({ type: "ADD", payload: { text: input } });
+          if (input === "") {
+            alert("Fill something");
+            return;
+          }
+          dispatch({ type: "ADD", payload: { id: Date.now(), text: input } });
           setInput("");
         }}
       >
@@ -41,7 +58,7 @@ function TodoList({ todos }) {
   return (
     <>
       {todos.map(todo => (
-        <Todo todo={todo} />
+        <Todo key={todo.id} todo={todo} />
       ))}
     </>
   );
@@ -49,7 +66,6 @@ function TodoList({ todos }) {
 
 function Todo({ todo }) {
   const context = useContext(Context);
-  console.log(context);
   return (
     <>
       <div
@@ -58,10 +74,13 @@ function Todo({ todo }) {
           gridTemplateColumns: "5fr 1fr",
           border: "1px red"
         }}
-        key={todo.text}
       >
         <p>{todo.text}</p>
-        <button onClick={()=>context({ type: "DELETE" })}>&times;</button>
+        <button
+          onClick={() => context({ type: "DELETE", payload: { id: todo.id } })}
+        >
+          &times;
+        </button>
       </div>
     </>
   );
